@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>日→中 即時字幕</title>
+  <style>
+    body { font-family: sans-serif; max-width: 42rem; margin: 2rem auto; line-height: 1.6; }
+    button { padding: 0.6rem 1.2rem; font-size: 1rem; }
+    pre { white-space: pre-wrap; background: #f4f4f4; padding: 1rem; border-radius: 8px; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>日文 → 中文 即時字幕 Demo</h1>
+  <button id="rec">開始</button>
+  <pre id="out"></pre>
+
+  <script>
+    const out = document.getElementById('out');
+    const btn = document.getElementById('rec');
+    let mediaStream, recorder;
+
+    btn.onclick = async () => {
+      if (!recorder || recorder.state === 'inactive') {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        recorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm' });
+
+        recorder.ondataavailable = async (e) => {
+          try {
+            const res = await fetch('/api/jp2zh', { method: 'POST', body: e.data });
+            const { text, error } = await res.json();
+            if (error) throw new Error(error);
+            out.textContent += text + "\n";
+            out.scrollTop = out.scrollHeight;
+          } catch (err) {
+            console.error(err);
+          }
+        };
+
+        recorder.start(400); // 每 0.4 秒送一次
+        btn.textContent = '停止';
+      } else {
+        recorder.stop();
+        mediaStream.getTracks().forEach(track => track.stop());
+        btn.textContent = '開始';
+      }
+    };
+  </script>
+</body>
+</html>
